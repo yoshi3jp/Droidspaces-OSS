@@ -216,7 +216,56 @@ else
     log "Systemd not found, skipping systemd-specific fixes"
 fi
 
-# 08. Configure logrotate
+# --- 3. Alpine/OpenRC & dhcpcd-Specific Fixes ---
+
+# Replace dhcpcd init script to only start in NAT network mode
+# This is the OpenRC equivalent of systemd's ExecCondition - if the container
+# is running in host network mode, dhcpcd is cleanly skipped at boot to prevent
+# cellular network breakage and kernel panics on Android interfaces.
+if $TEST -f "$ROOTFS_PATH/etc/init.d/dhcpcd"; then
+    log "Alpine/OpenRC dhcpcd service detected, applying NAT mode limitation..."
+    $CAT > "$ROOTFS_PATH/etc/init.d/dhcpcd" << 'INITEOF'
+#!/sbin/openrc-run
+
+description="DHCP Client Daemon"
+
+command="/sbin/dhcpcd"
+command_args="-q -B ${command_args:-}"
+command_background="true"
+pidfile="/run/dhcpcd/pid"
+
+depend() {
+	provide net
+	need localmount
+	use logger network
+	after bootmisc modules
+	before dns
+}
+
+start_pre() {
+	# Only start in NAT mode - prevents cellular network breakage in host network mode
+	if ! grep -q 'net_mode=nat' /run/droidspaces/container.config 2>/dev/null; then
+		einfo "Skipping dhcpcd: not in NAT network mode"
+		return 1
+	fi
+	checkpath -d /run/dhcpcd
+}
+INITEOF
+    $CHMOD +x "$ROOTFS_PATH/etc/init.d/dhcpcd"
+fi
+
+# Additionally whitelist only container veth interfaces (eth*) in dhcpcd.conf
+# as defense-in-depth against Android-internal interfaces (rmnet*, dit*, epdg*, etc.)
+if $TEST -f "$ROOTFS_PATH/etc/dhcpcd.conf"; then
+    log "dhcpcd.conf detected, whitelisting container eth* interfaces..."
+    if ! $GREP -q "allowinterfaces eth\*" "$ROOTFS_PATH/etc/dhcpcd.conf"; then
+        $ECHO "allowinterfaces eth*" >> "$ROOTFS_PATH/etc/dhcpcd.conf"
+    fi
+fi
+
+# --- 4. Miscellaneous Fixes ---
+
+# Configure logrotate
 log "Configuring logrotate for Android..."
 if $TEST -f "$ROOTFS_PATH/etc/logrotate.conf"; then
     $SED -i 's/^#maxsize.*/maxsize 50M/' "$ROOTFS_PATH/etc/logrotate.conf"
