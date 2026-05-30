@@ -548,7 +548,6 @@ int start_rootfs(struct ds_config *cfg) {
     firmware_path_add(fw_path);
   }
 
-  cfg->tty_count = DS_MAX_TTYS;
   ds_fix_host_ptys();
 
   if (ds_terminal_create(&cfg->console) < 0) {
@@ -567,11 +566,6 @@ int start_rootfs(struct ds_config *cfg) {
     struct winsize ws;
     if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == 0)
       ioctl(cfg->console.master, TIOCSWINSZ, &ws);
-  }
-
-  for (int i = 0; i < cfg->tty_count; i++) {
-    if (ds_terminal_create(&cfg->ttys[i]) < 0)
-      break;
   }
 
   /* 5. Resolve target PID file names early so monitor inherits them */
@@ -1352,12 +1346,6 @@ cleanup:
   if (cfg->console.master >= 0) {
     close(cfg->console.master);
     cfg->console.master = -1;
-  }
-  for (int i = 0; i < cfg->tty_count; i++) {
-    if (cfg->ttys[i].master >= 0) {
-      close(cfg->ttys[i].master);
-      cfg->ttys[i].master = -1;
-    }
   }
   if (sync_pipe[0] >= 0)
     close(sync_pipe[0]);

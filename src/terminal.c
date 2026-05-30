@@ -140,41 +140,6 @@ int ds_setup_tios(int fd, struct termios *old) {
  * Runtime Utilities
  * ---------------------------------------------------------------------------*/
 
-void build_container_ttys_string(struct ds_tty_info *ttys, int count, char *buf,
-                                 size_t size) {
-  size_t offset = 0;
-
-  if (size == 0)
-    return;
-
-  buf[0] = '\0';
-
-  for (int i = 0; i < count; i++) {
-    const char *name = ttys[i].name;
-    size_t len = strlen(name);
-
-    /* Add space between entries */
-    if (i > 0) {
-      if (offset + 1 >= size)
-        break;
-      buf[offset++] = ' ';
-    }
-
-    /* Copy name safely */
-    if (offset + len >= size) {
-      len = size - offset - 1;
-    }
-
-    memcpy(buf + offset, name, len);
-    offset += len;
-
-    if (offset >= size - 1)
-      break;
-  }
-
-  buf[offset] = '\0';
-}
-
 static volatile sig_atomic_t g_sigwinch_received = 0;
 static void handle_sigwinch(int sig) {
   (void)sig;

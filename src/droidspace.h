@@ -74,7 +74,6 @@
 #define DS_RECOMMENDED_KERNEL_MINOR 14
 #define DS_AUTHOR "ravindu644"
 #define DS_REPO "https://github.com/ravindu644/Droidspaces-OSS"
-#define DS_MAX_TTYS 6
 #define DS_UUID_LEN 32
 #define DS_MAX_CONTAINERS 1024
 #define DS_STOP_TIMEOUT 15 /* seconds */
@@ -347,8 +346,6 @@ struct ds_config {
 
   /* Terminal (console + ttys) */
   struct ds_tty_info console;
-  struct ds_tty_info ttys[DS_MAX_TTYS];
-  int tty_count; /* how many TTYs are active */
 
   /* Environment variables (dynamically allocated) */
   char env_file[PATH_MAX];
@@ -667,8 +664,6 @@ int ds_terminal_create(struct ds_tty_info *tty);
 int ds_terminal_set_stdfds(int fd);
 int ds_terminal_make_controlling(int fd);
 int ds_setup_tios(int fd, struct termios *old);
-void build_container_ttys_string(struct ds_tty_info *ttys, int count, char *buf,
-                                 size_t size);
 int ds_terminal_proxy(int master_fd);
 
 /* ---------------------------------------------------------------------------
